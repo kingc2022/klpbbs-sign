@@ -1,4 +1,5 @@
 import asyncio
+import json
 import random
 import re
 import string
@@ -36,42 +37,51 @@ params = {
     'ajaxtarget': 'midaben_sign',
 }
 
-cookies = {
-}
+cookies = []
 
 
 def validate():
-    if cookies == {}:
+    global cookies
+    if not cookies:
         print("Please input cookies")
         sys.exit(-1)
 
 
 async def main():
-    print("Start Sign")
+    global cookies
 
-    print("Get Formhash")
-    async with httpx.AsyncClient() as client:
-        resp = await client.get("https://klpbbs.com", cookies=cookies, headers=headers)
-        formhash = re.search(r'formhash=([a-f0-9]+)', resp.text).group(1) if re.search(r'formhash=([a-f0-9]+)',
-                                                                                       resp.text) else None
+    cnt = 1
 
-    if formhash == None:
-        print("Can not get formhash")
-        sys.exit(-1)
+    for cookie in cookies:
+        print(f"Start Sign {cnt}")
 
-    print("Get formhash successfully")
-    params['formhash'] = formhash
+        print("Get Formhash")
+        async with httpx.AsyncClient() as client:
+            resp = await client.get("https://klpbbs.com", cookies=cookie, headers=headers)
+            formhash = re.search(r'formhash=([a-f0-9]+)', resp.text).group(1) if re.search(r'formhash=([a-f0-9]+)',
+                                                                                           resp.text) else None
 
-    print("Sign")
+        if formhash is None:
+            print("Can not get formhash")
+            sys.exit(-1)
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.get('https://klpbbs.com/k_misign-sign.html', params=params, cookies=cookies,
-                                headers=headers)
+        print("Get formhash successfully")
+        params['formhash'] = formhash
 
-    print("Response:\n", resp.text)
-    print("Sign Successfully!")
+        print("Sign")
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get('https://klpbbs.com/k_misign-sign.html', params=params, cookies=cookie,
+                                    headers=headers)
+
+        print("Response:\n", resp.text)
+        print(f"Sign {cnt} Successfully!")
+
+        cnt += 1
 
 
 if __name__ == '__main__':
+    with open("config.json", 'r', encoding="utf-8") as f:
+        cookies = json.loads(f.read())["cookies"]
     validate()
     asyncio.run(main())
